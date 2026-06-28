@@ -1,0 +1,42 @@
+name: README smoke test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+
+      - name: Install Emacs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emacs-nox
+
+      - name: Install preview dependencies
+        working-directory: preview
+        run: bun install --frozen-lockfile
+
+      - name: Build preview renderer
+        working-directory: preview
+        run: bun run build
+
+      - name: Byte-compile Elisp package
+        run: emacs --batch -Q -L elisp --eval '(byte-compile-file "elisp/markdown-xwidget-preview.el")'
+
+      - name: Exercise README setup snippet
+        run: |
+          emacs --batch -Q \
+            --eval '(add-to-list '\''load-path (expand-file-name "elisp" default-directory))' \
+            --eval '(require '\''markdown-xwidget-preview)' \
+            --eval '(markdown-xwidget-preview-setup)' \
+            --eval '(unless (memq '\''markdown-xwidget-preview-mode markdown-mode-hook) (error "markdown hook missing"))' \
+            --eval '(unless (memq '\''markdown-xwidget-preview-mode gfm-mode-hook) (error "gfm hook missing"))'
