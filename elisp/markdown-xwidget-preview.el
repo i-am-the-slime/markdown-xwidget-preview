@@ -24,7 +24,10 @@
   :group 'tools)
 
 (defvar markdown-xwidget-preview-extension-root
-  (expand-file-name ".." (file-name-directory (or load-file-name buffer-file-name)))
+  (let ((directory (file-name-directory (or load-file-name buffer-file-name))))
+    (if (file-directory-p (expand-file-name "preview" directory))
+        directory
+      (expand-file-name ".." directory)))
   "Root directory of the bundled Markdown preview extension.")
 
 (defcustom markdown-xwidget-preview-command '("bun" "dev")
