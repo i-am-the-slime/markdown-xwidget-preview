@@ -362,8 +362,11 @@ With prefix arg NEW-SESSION, open a fresh xwidget session."
     (markdown-xwidget-preview-start)
     (xwidget-webkit-browse-url markdown-xwidget-preview-url new-session)
     (run-at-time 0.05 nil #'markdown-xwidget-preview-polish-buffers)
-    (run-at-time 0.35 nil #'markdown-xwidget-preview-send-buffer-from source-buffer)
-    (run-at-time 0.45 nil #'markdown-xwidget-preview-highlight-from source-buffer)))
+    (run-at-time 0.8 nil #'markdown-xwidget-preview-refresh-from source-buffer)
+    (run-at-time 1.3 nil #'markdown-xwidget-preview-send-buffer-from source-buffer)
+    (run-at-time 1.45 nil #'markdown-xwidget-preview-highlight-from source-buffer)
+    (run-at-time 2.4 nil #'markdown-xwidget-preview-send-buffer-from source-buffer)
+    (run-at-time 2.55 nil #'markdown-xwidget-preview-highlight-from source-buffer)))
 
 (defun markdown-xwidget-preview-open-beside ()
   "Open the preview beside the current Markdown buffer."
@@ -457,6 +460,15 @@ With prefix arg NEW-SESSION, open a fresh xwidget session."
           (run-at-time 0.35 nil #'markdown-xwidget-preview-send-buffer-from source-buffer)
           (run-at-time 0.45 nil #'markdown-xwidget-preview-highlight-from source-buffer))
       (markdown-xwidget-preview-open nil))))
+
+(defun markdown-xwidget-preview-refresh-from (buffer)
+  "Refresh the preview page before sending BUFFER."
+  (when (buffer-live-p buffer)
+    (when-let* ((widget (markdown-xwidget-preview--matching-widget)))
+      (xwidget-webkit-execute-script
+       widget
+       (format "location.href = %s + '?v=' + Date.now()"
+               (json-encode markdown-xwidget-preview-url))))))
 
 (defun markdown-xwidget-preview-send-buffer-from (buffer)
   "Send BUFFER contents to the xwidget preview."
