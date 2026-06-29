@@ -981,10 +981,22 @@ function trailingSourceSpaceSpans(node: MdNode, baseLine: number): React.ReactNo
 function renderMdastBlock(node: MdNode, baseLine: number, key: React.Key): React.ReactNode {
   if (node.type === 'heading') {
     const Heading = `h${Math.min(6, Math.max(1, node.depth ?? 1))}` as keyof React.JSX.IntrinsicElements
-    return withTrailingSourceSpaces(node, baseLine, <Heading {...mdastAttributes(node, baseLine)}>{renderMdastChildren(node, baseLine)}</Heading>, key)
+    return (
+      <Heading {...mdastAttributes(node, baseLine)} key={key}>
+        {renderMdastChildren(node, baseLine)}
+        {trailingSourceSpaceSpans(node, baseLine)}
+      </Heading>
+    )
   }
 
-  if (node.type === 'paragraph') return withTrailingSourceSpaces(node, baseLine, <p {...mdastAttributes(node, baseLine)}>{renderMdastChildren(node, baseLine)}</p>, key)
+  if (node.type === 'paragraph') {
+    return (
+      <p {...mdastAttributes(node, baseLine)} key={key}>
+        {renderMdastChildren(node, baseLine)}
+        {trailingSourceSpaceSpans(node, baseLine)}
+      </p>
+    )
+  }
 
   if (node.type === 'blockquote') {
     return (
@@ -1032,17 +1044,15 @@ function renderMdastListItem(node: MdNode, baseLine: number, index: number, orde
   const children = node.children ?? []
   const tightSingleParagraph = !node.spread && children.length === 1 && children[0]?.type === 'paragraph'
 
-  return withTrailingSourceSpaces(
-    node,
-    baseLine,
+  return (
     <li {...mdastAttributes(node, baseLine)}>
       <span className="synthetic-bullet">{ordered ? `${index + 1}.` : node.checked === null || node.checked === undefined ? '❧' : ''}</span>
       {node.checked !== null && node.checked !== undefined ? <span className={`task-box ${node.checked ? 'task-box-checked' : ''}`} /> : null}
       {tightSingleParagraph
         ? renderMdastChildren(children[0], baseLine)
         : children.map((child, childIndex) => renderMdastBlock(child, baseLine, childIndex))}
-    </li>,
-    index,
+      {trailingSourceSpaceSpans(node, baseLine)}
+    </li>
   )
 }
 
