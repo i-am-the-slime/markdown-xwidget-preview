@@ -24,7 +24,7 @@
   :group 'tools)
 
 (defvar markdown-xwidget-preview-extension-root
-  (let ((directory (file-name-directory (or load-file-name buffer-file-name))))
+  (let ((directory (file-name-directory (file-truename (or load-file-name buffer-file-name)))))
     (if (file-directory-p (expand-file-name "preview" directory))
         directory
       (expand-file-name ".." directory)))
