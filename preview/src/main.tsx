@@ -1,13 +1,11 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { fromMarkdown } from 'mdast-util-from-markdown'
-import { codeToTokens, type ThemedToken } from 'shiki'
+import type { HighlighterCore } from '@shikijs/core'
+import type { ThemedToken } from '@shikijs/types'
 import { gfm } from 'micromark-extension-gfm'
 import { gfmFromMarkdown } from 'mdast-util-gfm'
 import { AlertCircle, Monitor, Moon, Sprout, Sun, Tag } from 'lucide-react'
-import '@markgrafhq/markgraf-embed/css'
-import '@markgrafhq/markgraf-embed'
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import './style.css'
 
 const wilmersdorfShikiTheme = {
@@ -29,6 +27,68 @@ const wilmersdorfShikiTheme = {
     { scope: ['markup.heading', 'markup.bold'], settings: { foreground: '#eceff4', fontStyle: 'bold' } },
     { scope: ['markup.italic'], settings: { fontStyle: 'italic' } },
   ],
+}
+
+const supportedCodeLanguages = new Set([
+  'bash',
+  'css',
+  'go',
+  'html',
+  'javascript',
+  'json',
+  'jsx',
+  'markdown',
+  'purescript',
+  'shellscript',
+  'tsx',
+  'typescript',
+  'yaml',
+])
+
+let highlighterPromise: Promise<HighlighterCore> | undefined
+
+function codeHighlighter(): Promise<HighlighterCore> {
+  highlighterPromise ??= Promise.all([
+    import('@shikijs/core'),
+    import('@shikijs/engine-javascript'),
+    import('@shikijs/langs/bash'),
+    import('@shikijs/langs/css'),
+    import('@shikijs/langs/go'),
+    import('@shikijs/langs/html'),
+    import('@shikijs/langs/javascript'),
+    import('@shikijs/langs/json'),
+    import('@shikijs/langs/jsx'),
+    import('@shikijs/langs/markdown'),
+    import('@shikijs/langs/purescript'),
+    import('@shikijs/langs/shellscript'),
+    import('@shikijs/langs/tsx'),
+    import('@shikijs/langs/typescript'),
+    import('@shikijs/langs/yaml'),
+    import('@shikijs/themes/github-light'),
+  ]).then(([
+    core,
+    engine,
+    bash,
+    css,
+    go,
+    html,
+    javascript,
+    json,
+    jsx,
+    markdown,
+    purescript,
+    shellscript,
+    tsx,
+    typescript,
+    yaml,
+    githubLight,
+  ]) => core.createHighlighterCore({
+    langs: [bash.default, css.default, go.default, html.default, javascript.default, json.default, jsx.default, markdown.default, purescript.default, shellscript.default, tsx.default, typescript.default, yaml.default],
+    themes: [wilmersdorfShikiTheme, githubLight.default],
+    engine: engine.createJavaScriptRegexEngine(),
+  }))
+
+  return highlighterPromise
 }
 
 const previewDiagnostics = ((window as unknown as { __errors?: string[] }).__errors ??= [])
@@ -1065,33 +1125,56 @@ function RenderedBlock({ block }: { block: Block }) {
     )
   }
 
-  if (block.kind === 'chart') {
-    return (
-      <figure className="chart-card source-special" {...sourceAttributes(block)}>
-        <figcaption>{block.title}</figcaption>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={block.rows}>
-            <XAxis dataKey="name" tickLine={false} axisLine={false} />
-            <YAxis hide />
-            <Bar dataKey="value" fill="var(--accent)" radius={[8, 8, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </figure>
-    )
-  }
+  if (block.kind === 'chart') return <RenderedChart block={block} />
 
   return <RenderedMarkgraf block={block} />
+}
+
+function RenderedChart({ block }: { block: Extract<Block, { kind: 'chart' }> }) {
+  const maxValue = Math.max(1, ...block.rows.map((row) => row.value))
+  const width = 720
+  const height = 220
+  const paddingX = 18
+  const paddingBottom = 32
+  const gap = 14
+  const barWidth = Math.max(12, (width - paddingX * 2 - gap * Math.max(0, block.rows.length - 1)) / Math.max(1, block.rows.length))
+
+  return (
+    <figure className="chart-card source-special" {...sourceAttributes(block)}>
+      <figcaption>{block.title}</figcaption>
+      <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={block.title}>
+        {block.rows.map((row, index) => {
+          const barHeight = (height - paddingBottom - 10) * (row.value / maxValue)
+          const x = paddingX + index * (barWidth + gap)
+          const y = height - paddingBottom - barHeight
+          return (
+            <g key={row.name}>
+              <rect className="chart-bar" x={x} y={y} width={barWidth} height={barHeight} rx="8" />
+              <text className="chart-label" x={x + barWidth / 2} y={height - 8} textAnchor="middle">{row.name}</text>
+            </g>
+          )
+        })}
+      </svg>
+    </figure>
+  )
 }
 
 function RenderedMarkgraf({ block }: { block: Extract<Block, { kind: 'markgraf' }> }) {
   const ref = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    if (!ref.current || !window.markgraf) return
-    ref.current.innerHTML = ''
-    ref.current.dataset.markgrafTheme = currentPreviewTheme
-    ref.current.dataset.markgrafTitles = 'false'
-    window.markgraf.mount(ref.current, block.source)
+    let cancelled = false
+    Promise.all([
+      import('@markgrafhq/markgraf-embed/css'),
+      import('@markgrafhq/markgraf-embed'),
+    ]).then(() => {
+      if (cancelled || !ref.current || !window.markgraf) return
+      ref.current.innerHTML = ''
+      ref.current.dataset.markgrafTheme = currentPreviewTheme
+      ref.current.dataset.markgrafTitles = 'false'
+      window.markgraf.mount(ref.current, block.source)
+    })
+    return () => { cancelled = true }
   }, [block.source, currentPreviewTheme])
 
   return (
@@ -1103,11 +1186,18 @@ function RenderedMarkgraf({ block }: { block: Extract<Block, { kind: 'markgraf' 
 
 function RenderedCodeBlock({ attributes, language, source, startLine }: { attributes: ReturnType<typeof sourceAttributes>; language?: string; source: string; startLine: number }) {
   const [tokens, setTokens] = React.useState<ThemedToken[][] | undefined>(undefined)
-  const theme = currentPreviewTheme === 'dark' ? wilmersdorfShikiTheme : 'github-light'
+  const theme = currentPreviewTheme === 'dark' ? 'wilmersdorf-preview' : 'github-light'
 
   React.useEffect(() => {
     let cancelled = false
-    codeToTokens(source, { lang: normalizeCodeLanguage(language), theme })
+    const lang = normalizeCodeLanguage(language)
+    if (lang === 'text') {
+      setTokens(undefined)
+      return () => { cancelled = true }
+    }
+
+    codeHighlighter()
+      .then((highlighter) => highlighter.codeToTokens(source, { lang, theme }))
       .then((result) => { if (!cancelled) setTokens(result.tokens) })
       .catch((error) => {
         previewDiagnostics.push(String(error))
@@ -1122,7 +1212,13 @@ function RenderedCodeBlock({ attributes, language, source, startLine }: { attrib
 function normalizeCodeLanguage(language: string | undefined): string {
   const normalized = (language ?? 'text').toLowerCase()
   if (normalized === 'purs' || normalized === 'ps') return 'purescript'
-  return normalized
+  if (normalized === 'sh' || normalized === 'shell' || normalized === 'zsh' || normalized === 'fish') return 'shellscript'
+  if (normalized === 'js') return 'javascript'
+  if (normalized === 'ts') return 'typescript'
+  if (normalized === 'md') return 'markdown'
+  if (normalized === 'yml') return 'yaml'
+  if (supportedCodeLanguages.has(normalized)) return normalized
+  return 'text'
 }
 
 function renderHighlightedCode(lines: ThemedToken[][], startLine: number) {

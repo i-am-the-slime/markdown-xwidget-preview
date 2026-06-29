@@ -621,6 +621,24 @@ ol li[data-source-start] {
   50% { opacity: 0.62; transform: scaleY(0.88); }
 }
 
+.chart-svg {
+  display: block;
+  height: 220px;
+  overflow: visible;
+  width: 100%;
+}
+
+.chart-bar {
+  fill: var(--accent);
+}
+
+.chart-label {
+  fill: var(--muted);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .callout, .chart-card, .markgraf-card {
   background: var(--panel);
   border: 1px solid var(--rule);
