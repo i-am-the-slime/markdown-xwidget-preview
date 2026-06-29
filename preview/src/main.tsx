@@ -517,18 +517,9 @@ function themeModeIcon(mode: ThemeMode) {
   return <Monitor size={15} />
 }
 
-const initialNote = `---
-title: Markdown preview
-tags: preview
----
-
-# Markdown preview
-
-Open a Markdown file in Emacs and use \`SPC m p\` to send it here.
-`
-
 function App() {
-  const [noteSource, setNoteSource] = React.useState(initialNote)
+  const [noteSource, setNoteSource] = React.useState('')
+  const [hasReceivedSource, setHasReceivedSource] = React.useState(false)
   const [themeMode, setThemeMode] = React.useState<ThemeMode>(storedThemeMode)
   const [systemTheme, setSystemTheme] = React.useState<'light' | 'dark'>(() => window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   const effectiveTheme = themeMode === 'auto' ? systemTheme : themeMode
@@ -551,8 +542,12 @@ function App() {
   }, [themeMode])
 
   React.useEffect(() => {
-    window.updateNoteSource = setNoteSource
+    window.updateNoteSource = (source: string) => {
+      setHasReceivedSource(true)
+      setNoteSource(source)
+    }
     window.applyNoteEdit = (start: number, end: number, replacement: string) => {
+      setHasReceivedSource(true)
       setNoteSource((source) => source.slice(0, start) + replacement + source.slice(end))
     }
 
@@ -603,16 +598,29 @@ function App() {
         {themeModeIcon(themeMode)} {themeMode}
       </button>
       <main className="page">
-        {firstBlock ? <RenderedBlock block={firstBlock} /> : null}
-        {restBlocks.map((block, index) => <RenderedBlock block={block} key={index} />)}
-        <footer className="note-footer">
-          <div className="note-footer-mark"><Sprout size={18} /></div>
-          <div className="note-meta note-meta-bottom">
-            {parsed.frontmatter.tags.map((tag) => <span className="pill" key={tag}><Tag size={12} />{tag}</span>)}
-          </div>
-        </footer>
+        {!hasReceivedSource ? <PreviewWaiting /> : null}
+        {hasReceivedSource && firstBlock ? <RenderedBlock block={firstBlock} /> : null}
+        {hasReceivedSource ? restBlocks.map((block, index) => <RenderedBlock block={block} key={index} />) : null}
+        {hasReceivedSource ? (
+          <footer className="note-footer">
+            <div className="note-footer-mark"><Sprout size={18} /></div>
+            <div className="note-meta note-meta-bottom">
+              {parsed.frontmatter.tags.map((tag) => <span className="pill" key={tag}><Tag size={12} />{tag}</span>)}
+            </div>
+          </footer>
+        ) : null}
       </main>
     </div>
+  )
+}
+
+function PreviewWaiting() {
+  return (
+    <section className="preview-waiting" aria-live="polite">
+      <div className="preview-waiting-mark"><Sprout size={22} /></div>
+      <h1>Waiting for a Markdown buffer</h1>
+      <p>Open a Markdown file in Emacs and run <kbd>SPC m p</kbd>.</p>
+    </section>
   )
 }
 

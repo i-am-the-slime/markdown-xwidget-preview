@@ -173,6 +173,52 @@ body {
   gap: 0;
 }
 
+.preview-waiting {
+  align-items: flex-start;
+  border: 1px solid var(--rule);
+  border-radius: 26px;
+  box-shadow: 0 18px 60px var(--shadow);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 18vh;
+  padding: 30px 32px;
+}
+
+.preview-waiting h1 {
+  color: var(--ink);
+  font-family: var(--headline-font);
+  font-size: 34px;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.preview-waiting p {
+  margin: 0;
+}
+
+.preview-waiting kbd {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: var(--mono-font);
+  font-size: 0.82em;
+  padding: 0.12em 0.42em;
+}
+
+.preview-waiting-mark {
+  align-items: center;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
 .page {
   font-size: 18px;
   line-height: 1.62;
