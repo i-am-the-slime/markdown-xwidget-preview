@@ -31,6 +31,10 @@
   "Command used to start the Markdown dev server."
   :type '(repeat string))
 
+(defcustom markdown-xwidget-preview-install-dependencies-on-start t
+  "When non-nil, run `bun install --frozen-lockfile' if dependencies are missing."
+  :type 'boolean)
+
 (defcustom markdown-xwidget-preview-url "http://127.0.0.1:5173/"
   "URL opened in the xwidget preview."
   :type 'string)
@@ -240,11 +244,25 @@ Set to nil to keep the theme's code-block background."
                 markdown-xwidget-preview-root-files)
       default-directory))
 
+(defun markdown-xwidget-preview-install-dependencies ()
+  "Install preview web app dependencies when missing."
+  (interactive)
+  (let ((default-directory (file-name-as-directory markdown-xwidget-preview-project-root)))
+    (when (and markdown-xwidget-preview-install-dependencies-on-start
+               (file-exists-p (expand-file-name "package.json" default-directory))
+               (not (file-directory-p (expand-file-name "node_modules" default-directory))))
+      (message "Installing Markdown preview dependencies in %s" default-directory)
+      (let ((exit-code (call-process "bun" nil markdown-xwidget-preview--buffer-name t
+                                     "install" "--frozen-lockfile")))
+        (unless (zerop exit-code)
+          (user-error "Failed to install Markdown preview dependencies"))))))
+
 (defun markdown-xwidget-preview-start ()
   "Start the configured Markdown dev server unless it is already running."
   (interactive)
   (if (process-live-p markdown-xwidget-preview--process)
       (message "Markdown preview server already running")
+    (markdown-xwidget-preview-install-dependencies)
     (when markdown-xwidget-preview-clean-artifacts-on-start
       (markdown-xwidget-preview-clean-artifacts))
     (let* ((default-directory (markdown-xwidget-preview-root))
